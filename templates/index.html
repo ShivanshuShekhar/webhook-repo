@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Webhook Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>GitHub Repository Activity Monitor</h1>
+        <div id="events-container">
+            <p>Loading events...</p>
+        </div>
+    </div>
+
+    <script>
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZone: 'UTC',
+                timeZoneName: 'short'
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function formatEvent(event) {
+            const timestamp = formatTimestamp(event.timestamp);
+            
+            switch(event.action) {
+                case 'push':
+                    return `${event.author} pushed to ${event.to_branch} on ${timestamp}`;
+                case 'pull_request':
+                    return `${event.author} submitted a pull request from ${event.from_branch} to ${event.to_branch} on ${timestamp}`;
+                case 'merge':
+                    return `${event.author} merged branch ${event.from_branch} to ${event.to_branch} on ${timestamp}`;
+                default:
+                    return `${event.author} performed ${event.action} on ${timestamp}`;
+            }
+        }
+
+        function loadEvents() {
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(events => {
+                    const container = document.getElementById('events-container');
+                    if (events.length === 0) {
+                        container.innerHTML = '<p>No events found.</p>';
+                        return;
+                    }
+                    
+                    const eventsHtml = events.map(event => 
+                        `<div class="event">${formatEvent(event)}</div>`
+                    ).join('');
+                    
+                    container.innerHTML = eventsHtml;
+                })
+                .catch(error => {
+                    console.error('Error loading events:', error);
+                    document.getElementById('events-container').innerHTML = '<p>Error loading events.</p>';
+                });
+        }
+
+        // Load events immediately and then every 15 seconds
+        loadEvents();
+        setInterval(loadEvents, 15000);
+    </script>
+</body>
+</html>
